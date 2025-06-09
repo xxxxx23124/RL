@@ -1,6 +1,6 @@
 # PPO-Transformer  
 这是笔者初学强化学习，所以很多超参数属于瞎填，见谅。  
-笔者从https://github.com/datawhalechina/easy-rl和https://github.com/ericyangyu/PPO-for-Beginners这里学习的。  
+笔者从[蘑菇书EasyRL](https://github.com/datawhalechina/easy-rl)和[PPO for Beginners](https://github.com/ericyangyu/PPO-for-Beginners)这里学习的。  
 笔者实现了一个简单的PPO，整个项目就只有一个ppo.py文件  
 这个文件分为三个部分 模型 环境 ppo算法  
 首先介绍ppo算法，有三种方法计算batch_rtgs也就是rewards-to-go，笔者选择了其中性能说是比较好的。除了基本的训练逻辑以外，ppo类还负责多线程异步执行训练，可以选择任意数量的加载在cpu或者gpu上的环境进行多线程的异步学习。但异步学习容易让子模型间的策略差距越来越大，所以笔者采取了approx_kl大于一个特定值就停止训练的方法减少子环境模型间的差距。这里的approx_kl可能不会有0.01那么低，因为使用了Transformer的原因，但是训练效果还是不错的。笔者将学习率设置为一个比较低的值，因为看到网上有人说降低学习率有助于ppo去探索。  
