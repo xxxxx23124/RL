@@ -392,7 +392,7 @@ class PPO:
         self.max_timesteps_per_episode = 2000
         self.timesteps_per_mini_batch = 800
         self.actor_critic = Transformer(obs_dim, act_dim, self.max_timesteps_per_episode*2 + self.timesteps_per_mini_batch).to(self.device)
-        self.actor_critic_optim = torch.optim.NAdam(self.actor_critic.parameters(),lr=1e-5)
+        self.actor_critic_optim = torch.optim.NAdam(self.actor_critic.parameters(),lr=1e-6)
         self.max_grad_norm = 0.5
         self.use_gae = True
         self.use_vtrace = True
