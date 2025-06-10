@@ -431,7 +431,7 @@ class PPO:
                 logratios = curr_log_probs - self.mini_batch_log_probs
                 ratios = torch.exp(logratios)
                 approx_kl = ((ratios - 1) - logratios).mean()
-                if approx_kl > 2.0 * self.target_kl:
+                if approx_kl > 1.0:
                     break
                 if approx_kl > 1.5 * self.target_kl:
                     self.clip = max(self.clip / 1.5, 0.1)
