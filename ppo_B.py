@@ -423,9 +423,10 @@ class PPO:
         for j in range(self.n_updates_per_iteration):
             self.actor_critic_optim.zero_grad()
             mini_batch_id = 0
-            mini_batch_idx = 0
+            mini_batch_idx = -1
             while len(self.all_batch_lens):
                 mini_batch_id += 1
+                mini_batch_idx += 1
                 self._init_compute_data()
                 self._prepare_compute_data(not (j==self.n_updates_per_iteration - 1))
                 V, curr_log_probs, entropy = self._evaluate()
@@ -447,7 +448,6 @@ class PPO:
                 critic_loss = nn.MSELoss()(V, mini_batch_rtgs_list[mini_batch_idx])
                 actor_loss.backward(retain_graph=True)
                 critic_loss.backward()
-                mini_batch_idx += 1
             nn.utils.clip_grad_norm_(self.actor_critic.parameters(), self.max_grad_norm)
             self.actor_critic_optim.step()
             self._load_backup_data_to_store_data()
