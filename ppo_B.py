@@ -427,7 +427,7 @@ class PPO:
             while len(self.all_batch_lens):
                 mini_batch_id += 1
                 self._init_compute_data()
-                self._prepare_compute_data(not j==self.n_updates_per_iteration - 1)
+                self._prepare_compute_data(not (j==self.n_updates_per_iteration - 1))
                 V, curr_log_probs, entropy = self._evaluate()
                 entropy_loss = entropy.mean()
                 logratios = curr_log_probs - self.mini_batch_log_probs
