@@ -1,5 +1,5 @@
 # PPO-Transformer  
-这是笔者初学强化学习，所以很多超参数属于瞎填，见谅。  
+笔者初学强化学习，所以很多超参数属于瞎填，见谅。  
 笔者从[蘑菇书EasyRL](https://github.com/datawhalechina/easy-rl)和[PPO for Beginners](https://github.com/ericyangyu/PPO-for-Beginners)这里学习的。  
 笔者实现了一个简单的PPO，整个项目就只有一个ppo.py文件  
 这个文件分为三个部分 模型 环境 ppo算法  
