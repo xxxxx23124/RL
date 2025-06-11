@@ -20,8 +20,8 @@ class Config:
     rho_clip = 1.0
     c_clip = 1.0
     ent_coef = 0.01
-    max_cpu_threads = 1
-    max_gpu_threads = 1
+    max_cpu_threads = 0
+    max_gpu_threads = 6
     max_timesteps_per_episode = 2000
     timesteps_per_mini_batch = 1600
     timesteps_per_batch = 4 * timesteps_per_mini_batch
