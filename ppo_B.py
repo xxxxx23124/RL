@@ -27,8 +27,8 @@ class Config:
     timesteps_per_batch = 4 * timesteps_per_mini_batch
     timesteps_all_batch = (max_cpu_threads + max_gpu_threads) * timesteps_per_batch
     max_grad_norm = 0.5
-    target_kl = 0.03
-    break_kl = 0.05
+    target_kl = 0.01
+    break_kl = 0.016
     gamma = 0.99
     lam = 0.99
     backbone_layers: int = 3
