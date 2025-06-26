@@ -53,7 +53,7 @@
     -   `max_cpu_threads`, `max_gpu_threads`：设置并行采样的线程数。
     -   `use_automated_curriculum`：启用或禁用课程学习。
     -   模型参数如 `backbone_layers`, `encoder_d_model` 等。
-    -   目前这个模型很庞大（约8亿参数），如有需要请修改配置。
+    -   默认配置的模型非常庞大（约8亿参数），如有需要请修改配置。
   
 ## 一些想法
 
