@@ -104,7 +104,6 @@ class Config:
         env = gym.make(self.gid)
         self.obs_dim = env.observation_space.shape[0]  # 从环境中自动获取观测空间的维度。
         self.act_dim = env.action_space.shape[0]  # 从环境中自动获取动作空间的维度。
-        self.text_max_len = self.max_timesteps_per_episode + 100  # 设置一个比最大轨迹长度稍大的值，以备不时之需。
 
         # 如果没有设置并行环境，则将总批次大小设置为单个环境的批次大小。
         if self.timesteps_all_batch == 0:
