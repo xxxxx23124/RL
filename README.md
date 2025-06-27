@@ -1,65 +1,55 @@
-# PPO-Transformer-for-LunarLander
+## PPO-Transformer-for-LunarLander
 
-你好！这是一个我为解决 `LunarLanderContinuous-v2` 环境而编写的强化学习项目。它将经典的 **PPO (Proximal Policy Optimization)** 算法与 **Transformer** 架构相结合。
+这是一个为解决 `LunarLanderContinuous-v2` 环境而构建的强化学习项目，它将 PPO (Proximal Policy Optimization) 算法与 Transformer 架构相结合。代码实现于单个文件中，以保持结构清晰。
 
-作为一名强化学习的初学者，我从 [蘑菇书 EasyRL](https://github.com/datawhalechina/easy-rl) 和 [PPO for Beginners](https://github.com/ericyangyu/PPO-for-Beginners) 等优秀资源中获益良多。这个项目是我学习和实践的产物，代码都在单个文件 `ppo.py` 中，希望能保持简洁。
+### 项目设计与核心功能
 
-## 项目亮点与设计思路
+#### 1. 模型架构：基于 Transformer 的决策网络
 
-### 1. 模型选择：Transformer
+传统的强化学习智能体通常仅依赖当前时刻的观测来做决策。本项目引入 Transformer，旨在让智能体能够理解状态在时间序列上的**上下文关系**。
 
-在强化学习中，智能体通常根据**当前**的观测（observation）来做出决策。对于像 `LunarLander` 这样的任务，虽然当前观测已经包含了位置、速度等信息，但智能体如果能理解这些状态在**一段时间内的变化趋势**（即上下文），或许能制定出更优的长期策略。
+*   **设计动机**: Transformer 的自注意力机制擅长捕捉序列内的长距离依赖。通过将一次完整的飞行轨迹（episode）视为一个序列，模型不仅能看到当前状态，还能回顾历史状态的变化趋势，从而可能制定出更具远见的策略。
+*   **实现细节**:
+    *   模型主体采用 Transformer Encoder 架构。
+    *   为了使模型理解时间顺序，集成了**旋转位置编码 (RoPE)**。
+    *   **Actor (策略网络)** 和 **Critic (价值网络)** 共享一个主干网络，再分别通过各自的 Transformer 层进行细化，最终输出动作和状态价值。
 
-- **为什么选择 Transformer？**
-  Transformer 的核心优势在于其自注意力（Self-Attention）机制，它能捕捉序列中各个时间步之间的依赖关系。我希望借助这种能力，让智能体不仅看到当前帧，还能回顾整个轨迹（episode），理解动作与结果之间的长期因果联系。这就像一个玩家在回顾整局游戏录像来学习，而不是只盯着眼前的瞬间。
-- **具体实现**
-  - 模型使用了一个基于 Transformer Encoder 的架构。
-  - 为了让模型理解时间顺序，我引入了 **旋转位置编码 (RoPE)**，这是一种高效的位置编码方法。
-  - 演员（Actor）和评论家（Critic）共享一个共同的主干网络（Backbone），之后分别接入各自的 Transformer 层，以学习策略和价值函数。
+#### 2. 算法实现：功能增强的 PPO
 
-### 2. 算法实现：PPO (近端策略优化)
+本项目实现了 PPO 算法，并包含以下关键特性：
 
-我实现了一个功能相对完善的 PPO 算法，并集成了以下特性：
+*   **高级优势函数计算**: 支持使用 **GAE (Generalized Advantage Estimation)** 或 **V-trace** 来计算优势函数，这两种方法旨在优化学习过程中的偏差与方差平衡。
+*   **并行数据采样**: 支持配置多个 CPU 或 GPU 线程进行异步数据采样，以提高训练数据收集的效率。主模型在收集到足够数据后进行统一更新。
+*   **KL 散度早停**: 为保证策略更新的稳定性，引入了基于 `target_kl` 的早停机制。若单次更新中策略变化过大（近似KL散度超过阈值），则提前中止该轮更新，防止策略崩溃。
 
-- **GAE & V-trace**：支持使用 GAE (Generalized Advantage Estimation) 或 V-trace 来计算优势函数，这两种方法都能在偏差和方差之间取得更好的平衡。
-- **多线程异步采样**：代码支持利用多个 CPU 或 GPU 线程并行与环境交互、收集数据，提升了采样效率(实际测试不是很理想，如果有多块gpu并且cpu与多块gpu通信很快的可以提速，否则瓶颈就是cpu与gpu的通信速度，需要修改代码手动分配到不同gpu上)。当收集到足够多的数据后，主模型会进行统一的更新。
-- **KL 散度早停**：为了防止模型更新步子太大导致策略崩溃，并维持多线程环境下子模型策略的一致性，我设置了基于 `target_kl` 的早停机制。当一轮更新中近似 KL 散度超过阈值，该轮更新就会提前终止。
+#### 3. 环境设定：部分可观测性与课程学习
 
-### 3. 环境挑战：部分可观测性 (POMDP) 与课程学习
+为了模拟真实世界中信息不完整的情形，本项目将标准环境改造为一个部分可观测马尔可夫决策过程 (POMDP)。
 
-为了让任务更具挑战性并更好地模拟真实世界中的信息缺失，我将 `LunarLander` 包装成了一个部分可观测马尔可夫决策过程 (POMDP) 环境。
+*   **`LunarLanderPOMDPWrapper`**: 该环境包装器会以一定概率 `p_flicker` 随机“遮挡”部分观测信息（如位置、速度等），将其置零，从而增加任务难度。
+*   **自动化课程学习 (Automated Curriculum Learning)**: 为了让智能体能逐步适应这种信息缺失的环境，引入了课程学习机制：
+    1.  **初始阶段**: 环境接近完全可观测 (`p_flicker` 概率很低)，智能体学习基础控制。
+    2.  **难度提升**: 当智能体在当前难度下的平均奖励达到预设阈值 `curriculum_reward_threshold` 时，系统会自动增加 `p_flicker` 的概率。
+    3.  **渐进式学习**: 智能体从简单任务开始，逐步过渡到信息稀疏的复杂场景，稳健地掌握着陆技能。
 
-- **`LunarLanderPOMDPWrapper`**：这个包装器会以一定的概率 `p_flicker` 随机“遮挡”掉观测中的某些信息（如位置、速度等），将其置为 0。
-- **自动化课程学习 (Automated Curriculum Learning)**：从零开始就面对一个信息大量缺失的环境是非常困难的。因此，我引入了课程学习机制：
-  1.  **初始阶段**：`p_flicker` (信息遮挡概率) 非常低，环境接近完全可观测，智能体可以轻松学习基础的降落技巧。
-  2.  **评估与提升**：当智能体在当前难度下表现良好时（平均奖励超过预设阈值 `curriculum_reward_threshold`），系统会自动提升难度。
-  3.  **逐步增加难度**：难度提升方式为逐渐增加 `p_flicker` 的均值，让环境中的信息变得越来越稀疏。
-  
-  这种机制让智能体像学生一样，从易到难，循序渐进地掌握在复杂环境中完成任务的能力。
+### 如何运行
 
-## 如何运行
-
-1.  确保你已经安装了必要的库，例如 `gymnasium`, `torch`, `numpy`。
+1.  安装 `gymnasium`, `torch`, `numpy` 及 `box2d` 依赖。
     ```bash
     pip install gymnasium torch numpy
-    pip install gymnasium[box2d] # 安装 LunarLander 环境依赖
+    pip install gymnasium[box2d]
     ```
-2.  将代码保存为 `ppo.py`。
-3.  直接运行脚本即可开始训练：
+2.  将代码保存为 `ppo.py` 并直接运行。
     ```bash
     python ppo.py
     ```
-4.  你可以直接在 `ppo.py` 文件顶部的 `Config` 类中调整超参数，例如：
-    -   `max_cpu_threads`, `max_gpu_threads`：设置并行采样的线程数。
-    -   `use_automated_curriculum`：启用或禁用课程学习。
-    -   模型参数如 `backbone_layers`, `encoder_d_model` 等。
-    -   默认配置的模型非常庞大（约8亿参数），如有需要请修改配置。
-    -   默认配置收集数据时占用4g显存左右，训练时可能占用22g显存左右，保证4g以上的gpu专用显存以保证收集数据的速度，保留22g以上的共享显存让程序不出错。  
-  
-## 一些想法
+3.  所有超参数均可在代码文件顶部的 `Config` 类中进行调整，例如：
+    *   `max_cpu_threads`, `max_gpu_threads`: 并行采样线程数。
+    *   `use_automated_curriculum`: 启用或禁用课程学习。
+    *   `backbone_layers`, `encoder_d_model`: Transformer 模型相关参数。
 
-我很好奇，当一个具备上下文理解能力的模型（如 Transformer）在一个足够复杂的、包含丰富逻辑关系的环境中训练时，是否会像大型语言模型一样，涌现出更高级的策略和对环境背后物理规律的“理解”。这个项目算是一个小小的尝试。  
-  
-未来可能会为这个项目加一个小交互界面，使用内置服务器让后通过网页访问，可以动态修改一些配置或者看训练状态，未来可能会去实现PPO-RND，或者使用manba2+ttt的结合体代替transformer模型，实现模型可以玩更复杂，需要更多时间步才能完成的游戏。  
-  
-欢迎任何形式的交流和建议！  
+### 未来探索方向
+
+*   构建一个简单的 Web 交互界面，用于实时监控训练状态和动态调整配置。
+*   探索更前沿的算法与模型，例如将 Transformer 替换为基于状态空间模型（如 Mamba）的架构，以处理需要更长记忆的复杂游戏环境。
+*   实现 PPO-RND (Random Network Distillation) 等探索算法，以应对奖励稀疏的问题。
