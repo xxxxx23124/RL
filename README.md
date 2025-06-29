@@ -1,7 +1,5 @@
 ## PPO-Transformer-for-LunarLander
   
-注意，扫描（Scan）没有实现，当训练时计算图非常庞大，几乎无法正常运行，如果要使用，请删除LRNN_StatefulFFN并使用其他的FFN层。  
-  
 这是一个为解决 `LunarLanderContinuous-v2` 环境而构建的强化学习项目，它将 PPO (Proximal Policy Optimization) 算法与 Transformer 架构相结合。代码实现于单个文件中，以保持结构清晰。
 
 ### 项目设计与核心功能
