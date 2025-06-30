@@ -68,7 +68,7 @@ class Config:
     lam: float = 0.99  # GAE的lambda参数，用于平衡偏差和方差。
     # 优化器与损失函数 (Optimizer & Loss Function)
     lr: float = 1e-5      # 学习率，用于NAdam优化器。
-    clip: float = 0.05  # PPO裁剪范围(ε)，限制策略更新的幅度，防止更新过大。
+    clip: float = 0.2  # PPO裁剪范围(ε)，限制策略更新的幅度，防止更新过大。
     rho_clip: float = 1.0  # V-trace中的rho (重要性采样比率)的裁剪上限。
     c_clip: float = 1.0  # V-trace中的c (重要性采样比率)的裁剪上限。
     ent_coef: float = 1e-4  # 熵损失的系数，鼓励策略探索。
