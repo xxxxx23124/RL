@@ -496,7 +496,7 @@ class LRNN_StatefulFFN(nn.Module):
 
         # --- 核心 SSM 扫描 ---
         if use_h_prev:
-            # 推理模式逻辑（保持不变）
+            # 推理模式逻辑
             if self.h_prev is None:
                 self.h_prev = torch.zeros(batch_size, self.d_expand, self.d_state, device=x.device, dtype=torch.cfloat)
             h = A_bar[:, 0] * self.h_prev + B_bar[:, 0] * x_ssm[:, 0].unsqueeze(-1)
