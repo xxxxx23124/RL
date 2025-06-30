@@ -52,5 +52,5 @@ python ppo.py          # 默认单 GPU 训练
 ## TODO
 
 * Web UI 实时监控与调参  
-* 将纯 Transformer 主干替换为全 SSM（Mamba / RWKV）  
+* 实现ViT (Vision Transformer)
 * 引入 **PPO-RND** 等稀疏奖励探索策略
