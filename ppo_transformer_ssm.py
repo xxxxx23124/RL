@@ -320,7 +320,7 @@ class LRNN_StatefulFFN(nn.Module):
                 # 其余元素保持 Xavier 的随机值
 
     def discretize(self, A_log: torch.Tensor, delta: torch.Tensor):
-        delta = delta.clamp(min=1e-4, max=1.0) # delta 限制在一个合理区间即可把 NaN 根源掐掉
+        delta = delta.clamp(min=1e-4, max=1.0)
         A = -torch.exp(A_log)  # 如果A_log = log(-A)
         z = delta.to(A_log.dtype) * A
         A_bar = torch.exp(z)
