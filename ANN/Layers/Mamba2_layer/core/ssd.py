@@ -3,7 +3,8 @@
 B -> batch_size
 L -> seq_len
 H -> num_heads
-D -> head_dim/state_dim (SSM状态空间的维度)
+D -> head_dim
+N -> state_dim (SSM状态空间的维度)
 c -> num_chunks
 l -> chunk_size
 s -> s_idx (用于einsum中的序列索引)
@@ -15,13 +16,13 @@ x: B,L,H,D
 A: B,L,H
 B: B,L,H,D
 C: B,L,H,D
-ssd 返回一组ssm或者说是ssd的观察值y: batch_size,seq_len,num_heads,state_dim 
 """
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
 from einops import rearrange
+from typing import Optional
 
 def segsum(
         x: Tensor,
@@ -54,21 +55,21 @@ def segsum(
     return x_segsum
 
 
-def ssd(x,
-        A, 
-        B,
-        C, 
-        chunk_size=None, 
-        initial_states=None, 
-        device=None) -> tuple[Tensor, Tensor]:
+def ssd(x: Tensor,
+        A: Tensor, 
+        B: Tensor,
+        C: Tensor, 
+        chunk_size: Optional[int]=64, 
+        initial_states: Optional[Tensor]=None, 
+        ) -> tuple[Tensor, Tensor]:
     # 并行计算diagonal block
     B, L, D, S = x.shape
     """
     c是块的数量, l是chunk_size, B是batch_size, H是head数量, D是特征维度
     x: B,L,H,D -> B,c,l,H,D
     A: B,L,H -> B,c,l,H
-    B: B,L,H,D -> B,c,l,H,D
-    C: B,L,H,D -> B,c,l,H,D
+    B: B,L,H,N -> B,c,l,H,N
+    C: B,L,H,N -> B,c,l,H,N
     """
     x, A, B, C = [
         rearrange(m, "b (c l) ... -> b c l ...", l=chunk_size) for m in (x, A, B, C)
@@ -82,7 +83,7 @@ def ssd(x,
     L[l,s] 仅在 l>=s 时非零。所以求和只在 s <= l 的范围内进行。
     """
     # L: B, H, c, l, l
-    L = torch.exp(segsum(A, device=device))
+    L = torch.exp(segsum(A))
 
     # 每个块内（对角块）的输出
     Y_diag = torch.einsum("bclhn, bcshn, bhcls, bcshp -> bclhp", C, B, L, x)
@@ -130,7 +131,7 @@ def ssd(x,
     [S_0+S_1,         S_1,         0,        -inf],
     [S_0+S_1+S_2, S_1+S_2,       S_2,           0]]
     """
-    decay_chunk = torch.exp(segsum(F.pad(A_cumsum[..., -1], (1, 0), "constant", 0), device=device))
+    decay_chunk = torch.exp(segsum(F.pad(A_cumsum[..., -1], (1, 0), "constant", 0)))
     """
     decay_chunk 的形状 (batch, head, chunk_count+1, chunk_count+1)
     states 的形状 (batch, chunk_count+1, head, d_head, d_state)
