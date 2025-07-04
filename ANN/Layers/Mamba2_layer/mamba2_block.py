@@ -77,15 +77,18 @@ class Mamba2(nn.Module):
         # 1. 输入投影和分量计算
         z, xBC, dt = self._compute_zxbcdt(u)
 
-        # 2. 卷积步骤
-        # 只保留序列的最后 d_conv 个元素
-        # pad的第一个参数是tensor，第二个参数是填充方式，第三个参数是填充模式
-        # pad=(self.args.d_conv - xBC_t.shape[-1], 0) 表示在最后一个维度的左边填充
-        # max(0, ...) 确保了当 L > d_conv 时，填充长度为0，避免了负数填充的错误
-        conv_state = F.pad(xBC.transpose(1, 2), (max(0, self.args.d_conv - u.size(1)), 0))
+        # 准备卷积输入
+        conv_inputs = xBC.transpose(1, 2)  # (B, D_in, L)
+
         # 执行卷积并应用 SiLU 激活函数
         # conv1d自己就有pad功能，[:, :u.size(1), :]就是一般的因果卷积
-        xBC = F.silu(self.conv1d(xBC.transpose(1, 2)).transpose(1, 2)[:, :u.size(1), :])
+        xBC = F.silu(self.conv1d(conv_inputs).transpose(1, 2)[:, :u.size(1), :])
+        # 从输入中截取需要缓存的部分，即最后 d_conv-1 个时间步, 因为 self.conv1d.weight 的形状是 (D_in, 1, d_conv)，我们只需要 d_conv-1 的历史
+        state_len = self.args.d_conv - 1
+
+        cache_inputs = conv_inputs[..., -min(u.size(1), state_len):]
+        # 填充到 d_conv 的总长度以匹配 InferenceCache 的定义, 推理时，缓存通常包含 d_conv-1 的历史和1个当前步，总长 d_conv
+        conv_state = F.pad(cache_inputs, (self.args.d_conv - cache_inputs.shape[-1], 0))
 
         # 3. 并行 SSM 计算 (SSD)
         y, ssm_state = self._ssm_parallel(xBC, dt)
@@ -192,7 +195,7 @@ class Mamba2(nn.Module):
         new_ssm_state = ssm_state * rearrange(dA, "b h -> b h 1 1") + dBx
 
         # 计算输出: y_t = C * s_t + D * x_t
-        y = torch.einsum("bhpn, bdn -> bhp", new_ssm_state, C.unsqueeze(1))
+        y = torch.einsum("bhpn, bn -> bhp", new_ssm_state, C)
         y = y + rearrange(self.D, "h -> h 1") * x
         # 将结果从 (B, H, P) -> (B, H*P) -> (B, 1, H*P)
         y = rearrange(y, "b h p -> b (h p)").unsqueeze(1)
