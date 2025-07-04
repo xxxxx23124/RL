@@ -1,1 +1,3 @@
-重构造中，计划未来使用torchrl+gym+godot_rl+godot完成该项目。
+重构造中，计划未来使用torchrl+gym+godot_rl+godot完成该项目。  
+当前进度：mamba2的组件(已实现)，注意力组件(已实现)，旋转编码(以实现)，torchrl自定义强化学习组件(还不了解)，gym自定义游戏(还不了解)，godot(还不了解)  
+计划未来对现有模型做简单的验证测试  
