@@ -102,18 +102,19 @@ class Mamba2(nn.Module):
         """循环模式下的前向传播，一次处理一个 token。"""
         assert u.size(1) == 1, "在步进模式下，每次只能处理一个 token"
 
-        # 1. 输入投影和分量计算
-        z, xBC, dt = self._compute_zxbcdt(u.squeeze(1))
+        # 输入投影和分量计算, 保持 (B, 1, D) 形状
+        z, xBC, dt = self._compute_zxbcdt(u)
 
         # 2. 卷积步骤 (循环方式)
         # 更新卷积状态缓存
         h.conv_state.copy_(torch.roll(h.conv_state, shifts=-1, dims=-1))
-        h.conv_state[..., -1] = xBC
+        h.conv_state[..., -1] = xBC.squeeze(1)
         # 计算卷积输出
         xBC = torch.sum(h.conv_state * rearrange(self.conv1d.weight, "d 1 w -> d w"), dim=-1)
         if self.conv1d.bias is not None:
             xBC += self.conv1d.bias
-        xBC = F.silu(xBC)
+        # 将结果从 (B, conv_dim) 变回 (B, 1, conv_dim) 以匹配后续流程
+        xBC = F.silu(xBC).unsqueeze(1)
 
         # 3. 循环 SSM 计算
         y, ssm_state = self._ssm_recurrent(xBC, dt, h.ssm_state)
@@ -125,7 +126,7 @@ class Mamba2(nn.Module):
         y = self.norm(y, z)
         y = self.out_proj(y)
 
-        return y.unsqueeze(1), h
+        return y, h
 
     def _compute_zxbcdt(self, u: Tensor) -> tuple[Tensor, Tensor, Tensor]:
         """从输入 `u` 计算 z, x, B, C, dt。"""
@@ -169,8 +170,9 @@ class Mamba2(nn.Module):
         return y, final_ssm_state
 
     def _ssm_recurrent(self, xBC: Tensor, dt: Tensor, ssm_state: Tensor) -> tuple[Tensor, Tensor]:
-        """执行循环式的 SSM 计算。"""
+        """执行循环式的 SSM 计算，输入形状为 (B, 1, ...)。"""
         A = -torch.exp(self.A_log)  # (nheads,)
+        xBC, dt = xBC.squeeze(1), dt.squeeze(1)
         # 分解 x, B, C
         x, B, C = torch.split(
             xBC, [self.args.d_inner, self.args.d_state, self.args.d_state], dim=-1
@@ -179,7 +181,9 @@ class Mamba2(nn.Module):
 
         # 计算离散化的 A 和 B
         dA = torch.exp(dt * A)  # (batch, nheads)
-        # (b,h) * (b,n) -> (b,h,n)  (通过广播)
+        # B/C: (B, N) -> (B, 1, N) 以便广播
+        # dt: (B, H) -> (B, H, 1) 以便广播
+        # dt_B = dt.unsqueeze(-1) * B.unsqueeze(1) -> (B, H, N)
         dt_B = dt.unsqueeze(-1) * B.unsqueeze(1) 
         # (b,h,n) * (b,h,p) -> (b,h,p,n)
         dBx = torch.einsum('bhn,bhp->bhpn', dt_B, x)
@@ -188,7 +192,8 @@ class Mamba2(nn.Module):
         new_ssm_state = ssm_state * rearrange(dA, "b h -> b h 1 1") + dBx
 
         # 计算输出: y_t = C * s_t + D * x_t
-        y = torch.einsum("bhpn, bn -> bhp", new_ssm_state, C)
+        y = torch.einsum("bhpn, bdn -> bhp", new_ssm_state, C.unsqueeze(1))
         y = y + rearrange(self.D, "h -> h 1") * x
-        y = rearrange(y, "b h p -> b (h p)")
+        # 将结果从 (B, H, P) -> (B, H*P) -> (B, 1, H*P)
+        y = rearrange(y, "b h p -> b (h p)").unsqueeze(1)
         return y, new_ssm_state
