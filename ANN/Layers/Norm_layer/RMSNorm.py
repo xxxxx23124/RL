@@ -12,9 +12,10 @@ class RMSNorm(nn.Module):
         dim (int): 输入特征的维度。
         eps (float): 为保证数值稳定性加在分母上的一个很小的值。
     """
-    def __init__(self, dim: int, eps: float = 1e-5, device: torch.device = None):
+    def __init__(self, dim: int, device: torch.device, eps: float = 1e-5):
         super().__init__()
         self.eps = eps
+        self.device = device
         # 'weight' 是 RMSNorm 的可学习增益参数
         self.weight = nn.Parameter(torch.ones(dim, device=device))
 
