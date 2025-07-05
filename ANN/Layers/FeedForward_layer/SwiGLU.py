@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from FeedForwardConfig import FeedForwardConfig
 
-class FeedForward(nn.Module):
+class SwiGLUFeedForward(nn.Module):
     def __init__(self, args: FeedForwardConfig, device: torch.device):
         super().__init__()
         self.args = args

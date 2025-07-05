@@ -586,7 +586,7 @@ class Transformer(nn.Module):
         self.args = args
         self.encoder = Encoder(self.args)
 
-    def clear_kvCashe_hPrev(self):
+    def clear_kvCache_hPrev(self):
         for module in self.modules():
             if isinstance(module, MultiHeadAttention):
                 module.kv_cache = None
@@ -652,7 +652,7 @@ class Environment:
             self.truncated = False
             ep_start_time = time()
             # 把隐藏状态清空
-            self.actor_critic.clear_kvCashe_hPrev()
+            self.actor_critic.clear_kvCache_hPrev()
             while ep_t < self.max_timesteps_per_episode and not (self.terminated or self.truncated):
                 ep_t += 1
                 t += 1
@@ -667,7 +667,7 @@ class Environment:
                 ep_dones.append(self.terminated or self.truncated)
 
             # 把隐藏状态清空
-            self.actor_critic.clear_kvCashe_hPrev()
+            self.actor_critic.clear_kvCache_hPrev()
 
             self.batch_ep_obs.append(torch.cat(ep_obs, dim=0))
             self.batch_ep_acts.append(torch.cat(ep_acts, dim=0))

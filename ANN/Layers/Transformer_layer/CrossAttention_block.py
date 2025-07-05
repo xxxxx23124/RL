@@ -27,11 +27,11 @@ class CrossAttention(nn.Module):
 
     def forward(self, 
                 query: Tensor,
-                encoder_kvCashe: FlashAttentionKVCache,
+                encoder_kvCache: FlashAttentionKVCache,
                 ) -> Tensor:
         query = self.q_proj(query)
         query = rearrange(query, 'b s (h d) -> b h s d', h=self.args.nheads)
-        key_encoder, value_encoder = encoder_kvCashe.get()
+        key_encoder, value_encoder = encoder_kvCache.get()
         attn_output = F.scaled_dot_product_attention(query, key_encoder, value_encoder, is_causal=False)
         attn_output = rearrange(attn_output, 'b h s d -> b s (h d)')
         return self.out_proj(attn_output)
