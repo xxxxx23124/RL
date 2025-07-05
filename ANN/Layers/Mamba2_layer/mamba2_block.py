@@ -70,13 +70,13 @@ class Mamba2(nn.Module):
                 - y (Tensor): 输出张量，形状为 `(batch, seqlen, d_model)`。
                 - h (InferenceCache): 更新后的推理缓存。
         """
-        u_reshaped = self.pre_norm(u_reshaped)
+        u_norm = self.pre_norm(u_reshaped)
         if h:
             # 循环模式（单步推理）
-            return self._step(u_reshaped, h).view(original_shape)
+            return (u_reshaped + self._step(u_norm, h)).view(original_shape)
         else:
             # 并行模式（训练或批量推理）
-            return self._parallel_forward(u_reshaped).view(original_shape)
+            return (u_reshaped + self._parallel_forward(u_norm)).view(original_shape)
 
     def _parallel_forward(self, u: Tensor) -> Tensor:
         """并行模式下的前向传播，处理整个序列。"""

@@ -31,7 +31,7 @@ class SelfAttention(nn.Module):
         key = rearrange(key, 'b s (h d) -> b h s d', h=self.args.nheads)
         value = rearrange(value, 'b s (h d) -> b h s d', h=self.args.nheads)
 
-        # 注意，如果在推理阶段要先rotary_emb再更新kvcashe
+        # 注意，如果在推理阶段要先rotary_emb再更新kvcache
         if rotary_emb:
             if kv_cache:
                 seq_len_offset = kv_cache.seq_len
