@@ -40,6 +40,8 @@ class Mamba2(nn.Module):
             device=device,
         )
 
+        self.pre_norm = RMSNorm(args.d_model, device)
+
         # SSM 的可学习参数
         self.dt_bias = nn.Parameter(torch.empty(args.nheads, device=device))  # dt 的偏置
         self.A_log = nn.Parameter(torch.empty(args.nheads, device=device))   # A 的对数形式，保持其为负
@@ -50,6 +52,9 @@ class Mamba2(nn.Module):
         self.out_proj = nn.Linear(args.d_inner, args.d_model, bias=False, device=device)
 
     def forward(self, u: Tensor, h: Optional[Mamba2InferenceCache] = None) -> Tensor:
+        B, S, L, D = u.shape
+        original_shape = (B, S, L, D)
+        u_reshaped = u.reshape(B * L, S, D)
         """
         Mamba-2 层的前向传播。
 
@@ -65,12 +70,13 @@ class Mamba2(nn.Module):
                 - y (Tensor): 输出张量，形状为 `(batch, seqlen, d_model)`。
                 - h (InferenceCache): 更新后的推理缓存。
         """
+        u_reshaped = self.pre_norm(u_reshaped)
         if h:
             # 循环模式（单步推理）
-            return self._step(u, h)
+            return self._step(u_reshaped, h).view(original_shape)
         else:
             # 并行模式（训练或批量推理）
-            return self._parallel_forward(u)
+            return self._parallel_forward(u_reshaped).view(original_shape)
 
     def _parallel_forward(self, u: Tensor) -> Tensor:
         """并行模式下的前向传播，处理整个序列。"""
@@ -122,7 +128,7 @@ class Mamba2(nn.Module):
         # 循环 SSM 计算
         y, new_ssm_state = self._ssm_recurrent(xBC_activated, dt, current_ssm_state)
 
-        # 更新 cashe 状态
+        # 更新 cache 状态
         h.update(new_conv_input=xBC_unactivated.squeeze(1), new_ssm_state=new_ssm_state)
 
         # 门控归一化和输出投影
