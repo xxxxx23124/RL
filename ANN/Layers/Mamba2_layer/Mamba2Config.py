@@ -6,7 +6,7 @@ class Mamba2Config:
     d_conv: int = 4  # convolution kernel size
     expand: int = 2  # expansion factor (E)
     headdim: int = 64  # head dimension (P)
-    chunk_size: int = 64  # matrix partition size (Q)
+    chunk_size: int = 32  # matrix partition size (Q)
 
     def __post_init__(self):
         self.d_inner = self.expand * self.d_model

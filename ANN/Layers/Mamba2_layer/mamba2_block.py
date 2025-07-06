@@ -8,6 +8,7 @@ from Norm_layer.RMSNorm import RMSNorm
 import torch
 from torch import Tensor, nn
 import torch.nn.functional as F
+from torch.utils.checkpoint import checkpoint
 from einops import rearrange
 from typing import Optional
 
@@ -51,7 +52,7 @@ class Mamba2(nn.Module):
         self.norm = RMSNorm(args.d_inner, device=device)
         self.out_proj = nn.Linear(args.d_inner, args.d_model, bias=False, device=device)
 
-    def forward(self, u: Tensor, h: Optional[Mamba2InferenceCache] = None) -> Tensor:
+    def forward(self, u: Tensor, h: Optional[Mamba2InferenceCache] = None, initial_states:Optional[Tensor]=None) -> tuple[Tensor, Tensor]:
         B, S, L, D = u.shape
         original_shape = (B, S, L, D)
         u_reshaped = u.reshape(B * L, S, D)
@@ -76,9 +77,9 @@ class Mamba2(nn.Module):
             return (u_reshaped + self._step(u_norm, h)).view(original_shape)
         else:
             # 并行模式（训练或批量推理）
-            return (u_reshaped + self._parallel_forward(u_norm)).view(original_shape)
+            return (u_reshaped + self._parallel_forward(u_norm, initial_states)).view(original_shape)
 
-    def _parallel_forward(self, u: Tensor) -> Tensor:
+    def _parallel_forward(self, u: Tensor, initial_states:Optional[Tensor]=None) -> tuple[Tensor, Tensor]:
         """并行模式下的前向传播，处理整个序列。"""
         # 输入投影和分量计算
         z, xBC, dt = self._compute_zxbcdt(u)
@@ -91,13 +92,13 @@ class Mamba2(nn.Module):
         xBC = F.silu(self.conv1d(conv_inputs).transpose(1, 2)[:, :u.size(1), :])
 
         # 并行 SSM 计算 (SSD)
-        y, ssm_state = self._ssm_parallel(xBC, dt)
+        y, ssm_state = self._ssm_parallel(xBC, dt, initial_states)
 
         # 门控归一化和输出投影
         y = self.norm(y, z)
         y = self.out_proj(y)
 
-        return y
+        return y, ssm_state
 
     def _step(self, u: Tensor, h: Mamba2InferenceCache) -> Tensor:
         """循环模式下的前向传播，一次处理一个 token。"""
@@ -135,7 +136,7 @@ class Mamba2(nn.Module):
         y = self.norm(y, z)
         y = self.out_proj(y)
 
-        return y
+        return y, new_ssm_state
 
     def _compute_zxbcdt(self, u: Tensor) -> tuple[Tensor, Tensor, Tensor]:
         """从输入 `u` 计算 z, x, B, C, dt。"""
@@ -153,7 +154,7 @@ class Mamba2(nn.Module):
         dt = F.softplus(dt + self.dt_bias)
         return z, xBC, dt
 
-    def _ssm_parallel(self, xBC: Tensor, dt: Tensor) -> tuple[Tensor, Tensor]:
+    def _ssm_parallel(self, xBC: Tensor, dt: Tensor, initial_states:Optional[Tensor]=None) -> tuple[Tensor, Tensor]:
         """执行并行化的 SSM 计算 (SSD)。"""
         A = -torch.exp(self.A_log)  # (nheads,)
         # 将 xBC 分解为 x, B, C
@@ -169,8 +170,10 @@ class Mamba2(nn.Module):
         y, final_ssm_state = ssd(
             x * dt.unsqueeze(-1),  # 乘以 dt 以缩放输入 x
             A * dt,               # 乘以 dt 以离散化 A
-            B, C,
-            self.args.chunk_size
+            B, 
+            C,
+            self.args.chunk_size,
+            initial_states
         )
 
         # 添加 D 残差连接
