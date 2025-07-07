@@ -102,7 +102,7 @@ class Mamba2(nn.Module):
 
         return y, ssm_state
 
-    def _step(self, u: Tensor, h: Mamba2InferenceCache) -> Tensor:
+    def _step(self, u: Tensor, h: Mamba2InferenceCache) -> tuple[Tensor, Tensor]:
         """循环模式下的前向传播，一次处理一个 token。"""
         assert u.size(1) == 1, "在步进模式下，每次只能处理一个 token"
 
