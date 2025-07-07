@@ -1,6 +1,6 @@
 重构造中，计划使用ppo训练自博弈下围棋。  
   
-使用技术：mamba2，flash attention，cnn，SwiGLUMlp，torchrl，ppo，pettingZoo 
+使用技术：mamba2，flash attention, RoPE，cnn，SwiGLUMlp，torchrl，ppo，pettingZoo 
   
 模型（时空分解注意力），mamba2处理时间步，flash attention处理空间（图像，每个像素点都当作一个token，其中可能加入cnn辅助注意力提取相邻的空间讯息）  
 输入: (B, S, L, D)  
