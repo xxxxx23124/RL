@@ -157,7 +157,7 @@ class Mamba2(nn.Module):
         return z, xBC, dt
 
     def _ssm_parallel(self, xBC: Tensor, dt: Tensor, initial_states:Optional[Tensor]=None) -> tuple[Tensor, Tensor]:
-        """执行并行化的 SSM 计算 (SSD)。"""
+        """执行并行化的 SSM 计算 (SSD)"""
         A = -torch.exp(self.A_log)  # (nheads,)
         # 将 xBC 分解为 x, B, C
         x, B, C = torch.split(
