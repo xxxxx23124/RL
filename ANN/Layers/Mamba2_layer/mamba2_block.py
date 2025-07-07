@@ -74,10 +74,12 @@ class Mamba2(nn.Module):
         u_norm = self.pre_norm(u_reshaped)
         if h:
             # 循环模式（单步推理）
-            return (u_reshaped + self._step(u_norm, h)).view(original_shape)
+            y, ssm_state = self._step(u_norm, h)
+            return (u_reshaped + y).view(original_shape), ssm_state
         else:
             # 并行模式（训练或批量推理）
-            return (u_reshaped + self._parallel_forward(u_norm, initial_states)).view(original_shape)
+            y, ssm_state = self._parallel_forward(u_norm, initial_states)
+            return (u_reshaped + y).view(original_shape), ssm_state
 
     def _parallel_forward(self, u: Tensor, initial_states:Optional[Tensor]=None) -> tuple[Tensor, Tensor]:
         """并行模式下的前向传播，处理整个序列。"""
