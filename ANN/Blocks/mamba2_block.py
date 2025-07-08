@@ -1,20 +1,19 @@
 """
 这个文件定义了单独一层mamba2怎么工作
 """
-from ssd import ssd
-from Mamba2Config import Mamba2Config
-from InferenceCache import Mamba2InferenceCache
-from Norm_layer.RMSNorm import RMSNorm
+from ANN.Layers.Mamba2_layer.ssd import ssd
+from ANN.Layers.Mamba2_layer.Mamba2Config import Mamba2Config
+from ANN.Layers.Mamba2_layer.InferenceCache import Mamba2InferenceCache
+from ANN.Layers.Norm_layer.RMSNorm import RMSNorm
 import torch
 from torch import Tensor, nn
 import torch.nn.functional as F
-from torch.utils.checkpoint import checkpoint
 from einops import rearrange
 from typing import Optional
 
-class Mamba2(nn.Module):
+class Mamba2_block(nn.Module):
     """
-    Mamba-2 层。这是模型的核心构建块，结合了卷积和状态空间模型 (SSM)。
+    Mamba-2 块。这是模型的核心构建块，结合了卷积和状态空间模型 (SSM)。
 
     该模块实现了两种操作模式：
     1. 并行模式 (`forward`): 高效处理整个输入序列，适用于训练和长文本一次性推理。
@@ -52,7 +51,7 @@ class Mamba2(nn.Module):
         self.norm = RMSNorm(args.d_inner, device=device)
         self.out_proj = nn.Linear(args.d_inner, args.d_model, bias=False, device=device)
 
-    def forward(self, u: Tensor, h: Optional[Mamba2InferenceCache] = None, initial_states:Optional[Tensor]=None) -> tuple[Tensor, Tensor]:
+    def forward(self, u: Tensor, h: Optional[Mamba2InferenceCache] = None, initial_ssm_states:Optional[Tensor]=None) -> tuple[Tensor, Tensor]:
         B, S, L, D = u.shape
         original_shape = (B, S, L, D)
         u_reshaped = u.reshape(B * L, S, D)
@@ -72,16 +71,16 @@ class Mamba2(nn.Module):
                 - h (InferenceCache): 更新后的推理缓存。
         """
         u_norm = self.pre_norm(u_reshaped)
-        if h:
+        if h is not None:
             # 循环模式（单步推理）
             y, ssm_state = self._step(u_norm, h)
             return (u_reshaped + y).view(original_shape), ssm_state
         else:
             # 并行模式（训练或批量推理）
-            y, ssm_state = self._parallel_forward(u_norm, initial_states)
+            y, ssm_state = self._parallel_forward(u_norm, initial_ssm_states)
             return (u_reshaped + y).view(original_shape), ssm_state
 
-    def _parallel_forward(self, u: Tensor, initial_states:Optional[Tensor]=None) -> tuple[Tensor, Tensor]:
+    def _parallel_forward(self, u: Tensor, initial_ssm_states:Optional[Tensor]=None) -> tuple[Tensor, Tensor]:
         """并行模式下的前向传播，处理整个序列。"""
         # 输入投影和分量计算
         z, xBC, dt = self._compute_zxbcdt(u)
@@ -94,7 +93,7 @@ class Mamba2(nn.Module):
         xBC = F.silu(self.conv1d(conv_inputs).transpose(1, 2)[:, :u.size(1), :])
 
         # 并行 SSM 计算 (SSD)
-        y, ssm_state = self._ssm_parallel(xBC, dt, initial_states)
+        y, ssm_state = self._ssm_parallel(xBC, dt, initial_ssm_states)
 
         # 门控归一化和输出投影
         y = self.norm(y, z)

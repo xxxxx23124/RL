@@ -28,7 +28,7 @@ class SelfAttention(nn.Module):
         k = rearrange(k, 'b l (h d) -> b h l d', h=self.config.nheads)
         v = rearrange(v, 'b l (h d) -> b h l d', h=self.config.nheads)
 
-        if rotary_emb:
+        if rotary_emb is not None:
             q = rotary_emb(q, L)
             k = rotary_emb(k, L)
 
@@ -37,7 +37,7 @@ class SelfAttention(nn.Module):
         attn_output = rearrange(attn_output, 'b h l d -> b l (h d)')
         return self.out_proj(attn_output)
 
-class SpatialFusion_Layer(nn.Module):
+class SpatialFusion_block(nn.Module):
     def __init__(self, config: TransformerConfig, device: torch.device):
         super().__init__()
         self.config = config

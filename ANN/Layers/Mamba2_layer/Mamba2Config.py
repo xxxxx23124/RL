@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 @dataclass
 class Mamba2Config:
     d_model: int  # model dimension (D)
@@ -8,6 +8,8 @@ class Mamba2Config:
     headdim: int = 64  # head dimension (P)
     chunk_size: int = 32  # matrix partition size (Q)
 
+    d_inner: int = field(init=False)
+    nheads: int = field(init=False)
     def __post_init__(self):
         self.d_inner = self.expand * self.d_model
         assert self.d_inner % self.headdim == 0

@@ -32,15 +32,15 @@ class SelfAttention(nn.Module):
         value = rearrange(value, 'b s (h d) -> b h s d', h=self.args.nheads)
 
         # 注意，如果在推理阶段要先rotary_emb再更新kvcache
-        if rotary_emb:
-            if kv_cache:
+        if rotary_emb is not None:
+            if kv_cache is not None:
                 seq_len_offset = kv_cache.seq_len
             else: 
                 seq_len_offset = 0
             query = rotary_emb(query, seq_len=S, seq_len_offset=seq_len_offset)
             key = rotary_emb(key, seq_len=S, seq_len_offset=seq_len_offset)
         
-        if kv_cache:
+        if kv_cache is not None:
             kv_cache.update(key, value)
             key_full, value_full = kv_cache.get()
         else:

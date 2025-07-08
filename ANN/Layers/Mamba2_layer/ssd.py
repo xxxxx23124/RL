@@ -60,7 +60,7 @@ def ssd(x: Tensor,
         B: Tensor,
         C: Tensor, 
         chunk_size: Optional[int]=64, 
-        initial_states: Optional[Tensor]=None, 
+        initial_ssm_states: Optional[Tensor]=None, 
         ) -> tuple[Tensor, Tensor]:
     # 并行计算diagonal block
     B, L, D, S = x.shape
@@ -114,11 +114,11 @@ def ssd(x: Tensor,
               pad_left_for_dim_1, pad_right_for_dim_1) -> (0,0, 0,0, 0,0, 1,0)
     states -> (batch, chunk_count+1, head, d_head, d_state)
     """
-    if initial_states is None:
+    if initial_ssm_states is None:
         # 在 dim=1 (chunk 维度) 的前面填充 1 个单位，值为 0
         states = F.pad(states, (0, 0, 0, 0, 1, 0), "constant", 0)
     else:
-        states = torch.cat([initial_states, states], dim=1)
+        states = torch.cat([initial_ssm_states, states], dim=1)
     """
     A_cumsum 的形状是 (batch, head, chunk, chunk_len)
     A_cumsum[:, :, :, -1] 的形状是 (batch, head, chunk)
