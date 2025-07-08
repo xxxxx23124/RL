@@ -1,7 +1,5 @@
 重构造中，计划使用ppo训练自博弈下围棋。  
   
-项目目前暂停，因为我没有设备，不过模型已经完整实现了。在下午会附带模型的简要测试。不过你要是有一块5090就可以训练  
-  
 目前进度 -> 模型设计完成 -> ppo的基础训练流程(在legacy文件夹里)  
 未来需要完成 -> 使用torchrl的ppo训练  
   
@@ -9,6 +7,8 @@
   
 使用技术：mamba2，flash attention, RoPE，cnn，SwiGLUMlp，torchrl，ppo，pettingZoo 
   
+模型位置在：ANN -> Networks -> TimespaceGoModel.py里  
+
 TimeSpaceBlock，mamba2处理时间步，flash attention处理空间（图像，每个像素点都当作一个token，其中可能加入cnn辅助注意力提取相邻的空间讯息）  
 (B, S, L, D)  定义：B-> batch的大小，S->timestep的大小/时间步，L->输入图像的Location，L也等于H*W，D->每个输入图像的像素点对应的维度，也是cnn空间处理层对应卷积的Channel  
 输入: (B, S, L, D)  
@@ -51,21 +51,21 @@ Input tensor shape: torch.Size([1, 8, 19, 19, 3])
 Target policy shape: torch.Size([1, 8, 362])  
 Target value shape: torch.Size([1, 8, 1])  
   
-Initial CUDA memory allocated: 862.29 MB  
+Initial CUDA memory allocated: 437.81 MB  
 Running forward pass...  
-Forward pass successful. Total loss: 14.1548  
-Memory after forward pass: 23014.30 MB  
+Forward pass successful. Total loss: 5.3176  
+Memory after forward pass: 11632.51 MB  
 Running backward pass...  
 Backward pass successful.  
-Memory after backward pass (before optimizer step): 23589.92 MB  
+Memory after backward pass (before optimizer step): 11885.19 MB  
 Optimizer step successful.  
   
 --- Memory Usage Summary ---  
-Peak CUDA memory allocated during the process: 26781.22 MB  
+Peak CUDA memory allocated during the process: 15075.74 MB  
 --- TimeSpaceGoModel Summary ---  
-Total Parameters: 222,320,985  
-Trainable Parameters: 222,320,985  
+Total Parameters: 112,854,169  
+Trainable Parameters: 112,854,169  
 ------------------------------  
   
   
-=================== 1 passed, 1 warning in 88.37s (0:01:28) ===================  
+======================== 1 passed, 1 warning in 7.67s =========================  

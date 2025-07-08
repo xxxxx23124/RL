@@ -109,14 +109,14 @@ class TimeSpaceGoModel(nn.Module):
         # 配置主干网络
         self.backbone_args = NetworkConfig(self.d_model,
                                            (H*W)*2,
-                                           timespaceblock_num=20,
+                                           timespaceblock_num=10,
                                            )
         self.backbone = TimeSpaceChunk(self.backbone_args, device=device)
 
         # 配置策略网络
         self.actorhead_args = NetworkConfig(self.d_model,
                                            (H*W)*2,
-                                           timespaceblock_num=20,
+                                           timespaceblock_num=10,
                                            )
         self.actorhead = TimeSpaceChunk(self.actorhead_args, device=device)
         self.actorhead_output = nn.Linear(self.d_model, 1, device=device)
@@ -130,7 +130,7 @@ class TimeSpaceGoModel(nn.Module):
         # 配置价值网络
         self.critic_args = NetworkConfig(self.value_d_model,
                                          (H*W)*2,
-                                         spatialfusion_block_num=6,
+                                         spatialfusion_block_num=3,
                                          timespaceblock_num=1
                                          )
         self.critichead_begin_args = FeedForwardConfig(d_model=self.d_model,
