@@ -9,6 +9,8 @@
   
 使用技术：mamba2，flash attention, RoPE，cnn，SwiGLUMlp，torchrl，ppo，pettingZoo 
   
+模型位置在：ANN -> Networks -> TimespaceGoModel.py里  
+
 TimeSpaceBlock，mamba2处理时间步，flash attention处理空间（图像，每个像素点都当作一个token，其中可能加入cnn辅助注意力提取相邻的空间讯息）  
 (B, S, L, D)  定义：B-> batch的大小，S->timestep的大小/时间步，L->输入图像的Location，L也等于H*W，D->每个输入图像的像素点对应的维度，也是cnn空间处理层对应卷积的Channel  
 输入: (B, S, L, D)  
