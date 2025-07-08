@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from TransformerConfig import TransformerConfig
+from ANN.Layers.Transformer_layer.TransformerConfig import TransformerConfig
 import torch
 from torch import Tensor
 from typing import Optional

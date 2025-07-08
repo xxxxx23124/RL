@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import torch
 from torch import Tensor
-from Mamba2Config import Mamba2Config
+from ANN.Layers.Mamba2_layer.Mamba2Config import Mamba2Config
 from typing import Optional, Tuple
 
 @dataclass

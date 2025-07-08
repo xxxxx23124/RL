@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch import Tensor
-from TransformerConfig import TransformerConfig
+from ANN.Layers.Transformer_layer.TransformerConfig import TransformerConfig
 
 class RotaryEmbedding(nn.Module):
     def __init__(self, 

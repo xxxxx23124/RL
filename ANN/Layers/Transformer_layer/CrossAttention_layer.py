@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from TransformerConfig import TransformerConfig
-from InferenceCache import FlashAttentionKVCache
+from ANN.Layers.Transformer_layer.TransformerConfig import TransformerConfig
+from ANN.Layers.Transformer_layer.InferenceCache import FlashAttentionKVCache
 from einops import rearrange
 from typing import Optional
 

@@ -38,28 +38,28 @@ class SelfAttention(nn.Module):
         return self.out_proj(attn_output)
 
 class SpatialFusion_block(nn.Module):
-    def __init__(self, config: TransformerConfig, device: torch.device):
+    def __init__(self, args: TransformerConfig, device: torch.device):
         super().__init__()
-        self.config = config
+        self.config = args
         self.device = device
         # 1. 第一个规范化层 (在分支前)
-        self.pre_fusion_norm = RMSNorm(config.d_model, device)
+        self.pre_fusion_norm = RMSNorm(args.d_model, device)
 
         # 2. 全局路径 (Transformer Self-Attention)
-        self.attention = SelfAttention(config, device)
+        self.attention = SelfAttention(args, device)
 
         # 3. 局部路径 (CNN Branch)
         self.cnn_conv = nn.Conv2d(
-            config.d_model, config.d_model,
-            kernel_size=config.cnn_kernel_size,
+            args.d_model, args.d_model,
+            kernel_size=args.cnn_kernel_size,
             padding='same',
-            groups=config.nheads,
+            groups=args.nheads,
             device=device
         )
         
         # 4. 前馈网络 (MLP)
-        self.mlp_norm = RMSNorm(config.d_model, device) # MLP前的Norm
-        self.mlp = SwiGLUFeedForward(FeedForwardConfig(config.d_model))
+        self.mlp_norm = RMSNorm(args.d_model, device) # MLP前的Norm
+        self.mlp = SwiGLUFeedForward(FeedForwardConfig(args.d_model), device=device)
 
     def forward(self, x: Tensor, H: int, W: int, rotary_emb: Optional[RotaryEmbedding] = None) -> Tensor:
         B, S, L, D = x.shape
