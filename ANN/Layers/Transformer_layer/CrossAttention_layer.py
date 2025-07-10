@@ -5,7 +5,6 @@ from torch import Tensor
 from ANN.Layers.Transformer_layer.TransformerConfig import TransformerConfig
 from ANN.Layers.Transformer_layer.InferenceCache import FlashAttentionKVCache
 from einops import rearrange
-from typing import Optional
 
 class CrossAttention(nn.Module):
     def __init__(self, args: TransformerConfig, device: torch.device):

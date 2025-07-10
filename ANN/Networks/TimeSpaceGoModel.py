@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from typing import Optional, List
 from einops import rearrange
 from torch.utils.checkpoint import checkpoint
 from ANN.Layers.Mamba2_layer.InferenceCache import Mamba2InferenceCache
@@ -33,10 +32,10 @@ class TimeSpaceChunk(nn.Module):
             x:Tensor,
             H: int,
             W: int,
-            rotary_emb: Optional[RotaryEmbedding] = None,
-            cache_list:Optional[List[Mamba2InferenceCache]]=None,
-            initial_ssm_states_list:Optional[List[Tensor]]=None
-            ) -> tuple[Tensor, List[Tensor]]:
+            rotary_emb: RotaryEmbedding | None = None,
+            cache_list:list[Mamba2InferenceCache] | None=None,
+            initial_ssm_states_list:list[Tensor] | None=None
+            ) -> tuple[Tensor, list[Tensor]]:
         # 这里的输入形状为: B, S, L, D
         ssm_states_list=[]
         # 1. 处理 TimeSpaceBlocks
@@ -75,7 +74,7 @@ class SpaceChunk(nn.Module):
             x:Tensor,
             H: int,
             W: int,
-            rotary_emb: Optional[RotaryEmbedding] = None,
+            rotary_emb: RotaryEmbedding | None = None,
             ) -> Tensor:
         # 这里的输入形状为: B, S, L, D_low
         # 输出形状为: B, S, L, D_low
@@ -153,9 +152,9 @@ class TimeSpaceGoModel(nn.Module):
     def forward(        
             self,
             x:Tensor,
-            cache_list2:Optional[List[List[Mamba2InferenceCache]]]=None,
-            initial_ssm_states_list2:Optional[List[List[Tensor]]]=None
-            ) -> tuple[Tensor, Tensor, List[List[Tensor]]]:
+            cache_list2:list[list[Mamba2InferenceCache]] | None=None,
+            initial_ssm_states_list2:list[list[Tensor]] | None=None
+            ) -> tuple[Tensor, Tensor, list[list[Tensor]]]:
         B, S, H, W, C = x.shape
         if cache_list2 is not None:
             cache_backbone_list = cache_list2[0]

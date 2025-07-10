@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 from einops import rearrange
-from typing import Optional
 
 from ANN.Layers.Norm_layer.RMSNorm import RMSNorm
 from ANN.Layers.FeedForward_layer.SwiGLUMlp import SwiGLUFeedForward
@@ -19,7 +18,7 @@ class SelfAttention(nn.Module):
         self.Wqkv = nn.Linear(config.d_model, 3 * config.d_model, device=device)
         self.out_proj = nn.Linear(config.d_model, config.d_model, device=device)
 
-    def forward(self, x: Tensor, rotary_emb: Optional[RotaryEmbedding] = None) -> Tensor:
+    def forward(self, x: Tensor, rotary_emb: RotaryEmbedding | None = None) -> Tensor:
         B, L, D = x.shape
 
         q, k, v = self.Wqkv(x).chunk(3, dim=-1)
@@ -61,7 +60,7 @@ class SpatialFusion_block(nn.Module):
         self.mlp_norm = RMSNorm(args.d_model, device) # MLP前的Norm
         self.mlp = SwiGLUFeedForward(FeedForwardConfig(args.d_model), device=device)
 
-    def forward(self, x: Tensor, H: int, W: int, rotary_emb: Optional[RotaryEmbedding] = None) -> Tensor:
+    def forward(self, x: Tensor, H: int, W: int, rotary_emb: RotaryEmbedding | None = None) -> Tensor:
         B, S, L, D = x.shape
         original_shape = (B, S, L, D)
         x_reshaped = x.reshape(B * S, L, D)

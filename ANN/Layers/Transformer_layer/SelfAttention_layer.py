@@ -6,7 +6,6 @@ from ANN.Layers.Transformer_layer.TransformerConfig import TransformerConfig
 from ANN.Layers.Transformer_layer.RotaryEmbedding import RotaryEmbedding
 from ANN.Layers.Transformer_layer.InferenceCache import FlashAttentionKVCache
 from einops import rearrange
-from typing import Optional
 
 class SelfAttention(nn.Module):
     def __init__(self, args: TransformerConfig, device: torch.device):
@@ -18,8 +17,8 @@ class SelfAttention(nn.Module):
 
     def forward(self, 
                 x: Tensor,
-                rotary_emb: Optional[RotaryEmbedding] = None,
-                kv_cache: Optional[FlashAttentionKVCache] = None
+                rotary_emb: RotaryEmbedding | None = None,
+                kv_cache: FlashAttentionKVCache | None = None
                 ) -> Tensor:
 
         B, S, D = x.shape

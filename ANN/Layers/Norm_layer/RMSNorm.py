@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from typing import Optional
 
 class RMSNorm(nn.Module):
     """
@@ -19,7 +18,7 @@ class RMSNorm(nn.Module):
         # 'weight' 是 RMSNorm 的可学习增益参数
         self.weight = nn.Parameter(torch.ones(dim, device=device))
 
-    def forward(self, x: Tensor, z: Optional[Tensor] = None) -> Tensor:
+    def forward(self, x: Tensor, z: Tensor | None = None) -> Tensor:
         """
         前向传播。
 

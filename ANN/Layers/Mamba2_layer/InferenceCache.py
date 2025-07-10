@@ -2,7 +2,6 @@ from dataclasses import dataclass
 import torch
 from torch import Tensor
 from ANN.Layers.Mamba2_layer.Mamba2Config import Mamba2Config
-from typing import Optional, Tuple
 
 @dataclass
 class Mamba2InferenceCache:
@@ -67,7 +66,7 @@ class Mamba2InferenceCache:
         # 3. 更新 SSM 状态
         self.ssm_state = new_ssm_state
 
-    def get(self) -> Tuple[Tensor, Tensor]:
+    def get(self) -> tuple[Tensor, Tensor]:
         """获取当前的卷积状态和 SSM 状态。"""
         return self.conv_state, self.ssm_state
 
@@ -75,8 +74,8 @@ class Mamba2InferenceCache:
     def alloc(cls, 
               batch_size: int, 
               config: 'Mamba2Config', 
-              device: Optional[torch.device] = None,
-              dtype: Optional[torch.dtype] = None) -> "Mamba2InferenceCache":
+              device: torch.device | None = None,
+              dtype: torch.dtype | None = None) -> "Mamba2InferenceCache":
         """工厂方法：为推理开始时分配一个初始化的缓存。"""
         conv_dim = config.d_inner + 2 * config.d_state
         conv_state_shape = (batch_size, conv_dim, config.d_conv)

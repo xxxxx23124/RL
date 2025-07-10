@@ -22,7 +22,6 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 from einops import rearrange
-from typing import Optional
 
 def segsum(
         x: Tensor,
@@ -59,8 +58,8 @@ def ssd(x: Tensor,
         A: Tensor, 
         B: Tensor,
         C: Tensor, 
-        chunk_size: Optional[int]=64, 
-        initial_ssm_states: Optional[Tensor]=None, 
+        chunk_size: int | None = 16,
+        initial_ssm_states: Tensor | None = None,
         ) -> tuple[Tensor, Tensor]:
     # 并行计算diagonal block
     B_num, L_num, D_num, S_num = x.shape

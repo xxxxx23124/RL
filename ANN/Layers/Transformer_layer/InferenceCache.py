@@ -83,8 +83,8 @@ class FlashAttentionKVCache:
     @classmethod
     def alloc(cls, 
               config: 'TransformerConfig', 
-              device: Optional[torch.device] = None,
-              dtype: Optional[torch.dtype] = None) -> "FlashAttentionKVCache":
+              device: torch.device | None = None,
+              dtype: torch.dtype | None = None) -> "FlashAttentionKVCache":
         """
         工厂方法：预分配一个最大容量的缓存。
         初始 batch_size 可以设为1或一个典型值。

@@ -1,6 +1,3 @@
-"""
-这个文件定义了单独一层mamba2怎么工作
-"""
 from ANN.Layers.Mamba2_layer.ssd import ssd
 from ANN.Layers.Mamba2_layer.Mamba2Config import Mamba2Config
 from ANN.Layers.Mamba2_layer.InferenceCache import Mamba2InferenceCache
@@ -9,7 +6,6 @@ import torch
 from torch import Tensor, nn
 import torch.nn.functional as F
 from einops import rearrange
-from typing import Optional
 
 class Mamba2_block(nn.Module):
     """
@@ -51,7 +47,7 @@ class Mamba2_block(nn.Module):
         self.norm = RMSNorm(args.d_inner, device=device)
         self.out_proj = nn.Linear(args.d_inner, args.d_model, bias=False, device=device)
 
-    def forward(self, u: Tensor, h: Optional[Mamba2InferenceCache] = None, initial_ssm_states:Optional[Tensor]=None) -> tuple[Tensor, Tensor]:
+    def forward(self, u: Tensor, h: Mamba2InferenceCache | None = None, initial_ssm_states: Tensor | None=None) -> tuple[Tensor, Tensor]:
         B, S, L, D = u.shape
         original_shape = (B, S, L, D)
         u_reshaped = u.reshape(B * L, S, D)
@@ -80,7 +76,7 @@ class Mamba2_block(nn.Module):
             y, ssm_state = self._parallel_forward(u_norm, initial_ssm_states)
             return (u_reshaped + y).view(original_shape), ssm_state
 
-    def _parallel_forward(self, u: Tensor, initial_ssm_states:Optional[Tensor]=None) -> tuple[Tensor, Tensor]:
+    def _parallel_forward(self, u: Tensor, initial_ssm_states: Tensor | None=None) -> tuple[Tensor, Tensor]:
         """并行模式下的前向传播，处理整个序列。"""
         # 输入投影和分量计算
         z, xBC, dt = self._compute_zxbcdt(u)
@@ -155,7 +151,7 @@ class Mamba2_block(nn.Module):
         dt = F.softplus(dt + self.dt_bias)
         return z, xBC, dt
 
-    def _ssm_parallel(self, xBC: Tensor, dt: Tensor, initial_states:Optional[Tensor]=None) -> tuple[Tensor, Tensor]:
+    def _ssm_parallel(self, xBC: Tensor, dt: Tensor, initial_states: Tensor | None=None) -> tuple[Tensor, Tensor]:
         """执行并行化的 SSM 计算 (SSD)"""
         A = -torch.exp(self.A_log)  # (nheads,)
         # 将 xBC 分解为 x, B, C
