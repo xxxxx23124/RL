@@ -5,7 +5,7 @@
   
 训练时可以使用checkpoint和ssm_states的机制，只要单片段的计算能够在硬件上承载，整个训练流程的显存占用就是稳定可控的。  
   
-使用技术：mamba2，flash attention, RoPE，cnn，SwiGLUMlp，torchrl，ppo，pettingZoo 
+使用技术：mamba2，flash attention, RoPE，cnn，SwiGLUMlp，ppo，pettingZoo 
   
 模型位置在：ANN -> Networks -> TimespaceGoModel.py里  
 
