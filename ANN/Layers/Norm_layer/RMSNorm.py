@@ -12,7 +12,7 @@ class RMSNorm(nn.Module):
         dim (int): 输入特征的维度。
         eps (float): 为保证数值稳定性加在分母上的一个很小的值。
     """
-    def __init__(self, dim: int, device: torch.device, eps: float = 1e-5):
+    def __init__(self, dim: int, device: torch.device, eps: float = 1e-6):
         super().__init__()
         self.eps = eps
         self.device = device
