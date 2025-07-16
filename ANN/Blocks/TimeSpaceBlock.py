@@ -22,12 +22,11 @@ class TimeSpaceBlock(nn.Module):
             W: int,
             rotary_emb: RotaryEmbedding | None = None,
             cache:Mamba2InferenceCache | None=None,
-            initial_ssm_states:Tensor | None=None
-            ) -> tuple[Tensor, Tensor]:
+            ) -> tuple[Tensor, Mamba2InferenceCache]:
         # 输入形状x (B, S, L, D) B是batchsize, S是时间步timestep, L是输入图像的大小H*W, D是模型内在维度
         # 这俩模块内部就自带残差连接了
         x = self.space(x, H, W, rotary_emb)
-        x, ssm_state = self.time(x, cache, initial_ssm_states)
-        return x, ssm_state
+        x, cache = self.time(x, cache)
+        return x, cache
 
         

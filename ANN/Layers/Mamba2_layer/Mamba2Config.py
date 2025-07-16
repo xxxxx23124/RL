@@ -6,7 +6,7 @@ class Mamba2Config:
     d_conv: int = 4  # convolution kernel size
     expand: int = 2  # expansion factor (E)
     headdim: int = 64  # head dimension (P)
-    chunk_size: int = 4  # matrix partition size (Q)
+    max_chunk_size: int = 32  # matrix partition size (Q)
 
     d_inner: int = field(init=False)
     nheads: int = field(init=False)

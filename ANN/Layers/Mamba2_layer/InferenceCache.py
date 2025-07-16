@@ -50,10 +50,7 @@ class Mamba2InferenceCache:
             
         self.batch_size = target_batch_size
 
-    def update(self, new_conv_input: Tensor, new_ssm_state: Tensor) -> None:
-        """
-        用新的输入和状态更新缓存，并自适应 batch size。
-        """
+    def update_step(self, new_conv_input: Tensor, new_ssm_state: Tensor) -> None:
         # 1. 自适应 batch size
         # 从输入张量推断目标 batch_size
         target_batch_size = new_conv_input.shape[0]
@@ -64,6 +61,16 @@ class Mamba2InferenceCache:
         self.conv_state[..., -1] = new_conv_input
         
         # 3. 更新 SSM 状态
+        self.ssm_state = new_ssm_state
+
+    def update_parallel(self, new_conv_input: Tensor, new_ssm_state: Tensor) -> None:
+        assert new_conv_input.shape == self.conv_state.shape
+        # 1. 自适应 batch size
+        # 从输入张量推断目标 batch_size
+        target_batch_size = new_conv_input.shape[0]
+        self._adapt_batch_size(target_batch_size)
+
+        self.conv_state = new_conv_input
         self.ssm_state = new_ssm_state
 
     def get(self) -> tuple[Tensor, Tensor]:

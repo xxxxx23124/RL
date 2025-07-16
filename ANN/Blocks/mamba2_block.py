@@ -32,7 +32,7 @@ class Mamba2_block(nn.Module):
             out_channels=conv_dim,
             kernel_size=args.d_conv,
             groups=conv_dim,
-            padding=args.d_conv - 1,
+            padding=0, # 不使用内置 padding
             device=device,
         )
 
@@ -47,59 +47,61 @@ class Mamba2_block(nn.Module):
         self.norm = RMSNorm(args.d_inner, device=device)
         self.out_proj = nn.Linear(args.d_inner, args.d_model, bias=False, device=device)
 
-    def forward(self, u: Tensor, h: Mamba2InferenceCache | None = None, initial_ssm_states: Tensor | None=None) -> tuple[Tensor, Tensor]:
+    def forward(self, u: Tensor, h: Mamba2InferenceCache | None = None) -> tuple[Tensor, Mamba2InferenceCache]:
         B, S, L, D = u.shape
         original_shape = (B, S, L, D)
         u_reshaped = u.reshape(B * L, S, D)
-        """
-        Mamba-2 层的前向传播。
-
-        根据是否存在推理缓存 `h`，自动选择并行模式或循环模式。
-
-        参数:
-            u (Tensor): 输入张量，形状为 `(batch, seqlen, d_model)`。
-                        在并行模式下，`seqlen` 应为 `chunk_size` 的倍数。
-            h (InferenceCache | None): 推理缓存。如果提供，则进入单步循环模式。
-
-        返回:
-            tuple[Tensor, InferenceCache]:
-                - y (Tensor): 输出张量，形状为 `(batch, seqlen, d_model)`。
-                - h (InferenceCache): 更新后的推理缓存。
-        """
         u_norm = self.pre_norm(u_reshaped)
-        if h is not None:
+        if h is None:
+            # 如果h是None 就创建一个新的缓存
+            h = Mamba2InferenceCache.alloc(
+                batch_size=B * L,
+                config=self.args,
+                device=self.device
+            )
+        if S == 1:
             # 循环模式（单步推理）
-            y, ssm_state = self._step(u_norm, h)
-            return (u_reshaped + y).view(original_shape), ssm_state
+            y, h = self._step(u_norm, h)
+            return (u_reshaped + y).view(original_shape), h
         else:
             # 并行模式（训练或批量推理）
-            y, ssm_state = self._parallel_forward(u_norm, initial_ssm_states)
-            return (u_reshaped + y).view(original_shape), ssm_state
+            # 检查一下x的序列长度，期望的是8 16 32 64 128 这种的，不期望 15这种的
+            assert S % 2 == 0 and S // 2 > 1
+            y, h = self._parallel_forward(u_norm, h)
+            return (u_reshaped + y).view(original_shape), h
 
-    def _parallel_forward(self, u: Tensor, initial_ssm_states: Tensor | None=None) -> tuple[Tensor, Tensor]:
+    def _parallel_forward(self, u: Tensor, h: Mamba2InferenceCache) -> tuple[Tensor, Mamba2InferenceCache]:
         """并行模式下的前向传播，处理整个序列。"""
         # 输入投影和分量计算
-        z, xBC, dt = self._compute_zxbcdt(u)
+        z, xBC_unactivated, dt = self._compute_zxbcdt(u)
+
+        current_conv_state, current_ssm_state = h.get()
+        # 卷积步骤 (循环方式)
+        # 创建一个克隆体 (clone) 来模拟更新，以避免修改原始缓存
+        temp_conv_state = current_conv_state.clone()
 
         # 准备卷积输入
-        conv_inputs = xBC.transpose(1, 2)  # (B, D_in, L)
+        conv_inputs = xBC_unactivated.transpose(1, 2)  # (B, D_in, L)
 
         # 执行卷积并应用 SiLU 激活函数
-        # conv1d自己就有pad功能，[:, :u.size(1), :]就是一般的因果卷积
-        xBC = F.silu(self.conv1d(conv_inputs).transpose(1, 2)[:, :u.size(1), :])
+        conv_inputs = torch.cat([temp_conv_state[:,:,1:], # 取出后三个卷积，作为padding
+                                 conv_inputs], dim=2)
+        xBC = F.silu(self.conv1d(conv_inputs).transpose(1, 2))
 
         # 并行 SSM 计算 (SSD)
-        y, ssm_state = self._ssm_parallel(xBC, dt, initial_ssm_states)
+        y, new_ssm_state = self._ssm_parallel(xBC, dt, current_ssm_state)
+
+        h.update_parallel(new_conv_input=xBC_unactivated.transpose(1, 2)[:, :, -4:], # (B, D_in, 4)
+                          new_ssm_state=new_ssm_state)
 
         # 门控归一化和输出投影
         y = self.norm(y, z)
         y = self.out_proj(y)
 
-        return y, ssm_state
+        return y, h
 
-    def _step(self, u: Tensor, h: Mamba2InferenceCache) -> tuple[Tensor, Tensor]:
+    def _step(self, u: Tensor, h: Mamba2InferenceCache) -> tuple[Tensor, Mamba2InferenceCache]:
         """循环模式下的前向传播，一次处理一个 token。"""
-        assert u.size(1) == 1, "在步进模式下，每次只能处理一个 token"
 
         # 输入投影和分量计算, 保持 (B, 1, D) 形状
         z, xBC_unactivated, dt = self._compute_zxbcdt(u)
@@ -127,13 +129,14 @@ class Mamba2_block(nn.Module):
         y, new_ssm_state = self._ssm_recurrent(xBC_activated, dt, current_ssm_state)
 
         # 更新 cache 状态
-        h.update(new_conv_input=xBC_unactivated.squeeze(1), new_ssm_state=new_ssm_state)
+        h.update_step(new_conv_input=xBC_unactivated.squeeze(1),
+                      new_ssm_state=new_ssm_state)
 
         # 门控归一化和输出投影
         y = self.norm(y, z)
         y = self.out_proj(y)
 
-        return y, new_ssm_state
+        return y, h
 
     def _compute_zxbcdt(self, u: Tensor) -> tuple[Tensor, Tensor, Tensor]:
         """从输入 `u` 计算 z, x, B, C, dt。"""
@@ -169,7 +172,7 @@ class Mamba2_block(nn.Module):
             A * dt,               # 乘以 dt 以离散化 A
             B, 
             C,
-            self.args.chunk_size,
+            min(self.args.max_chunk_size, x.shape[1] // 2),
             initial_states
         )
 
