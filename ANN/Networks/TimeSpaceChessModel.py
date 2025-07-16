@@ -91,7 +91,7 @@ class TimeSpaceChessModel(nn.Module):
 
         # 卷积升维
         self.conv = nn.Conv2d(
-            112,
+            111,
             self.d_model,
             3,
             1,
@@ -159,17 +159,17 @@ class TimeSpaceChessModel(nn.Module):
         # x形状转变为：B, S, L, D
         new_cache_list2 = []
         # 主干
-        x_backbone, cache_list1 = self.backbone(
+        x_backbone, new_cache_backbone_list = self.backbone(
                                                 x,
                                                 self.H,
                                                 self.W,
                                                 self.rotary_emb,
                                                 cache_backbone_list,
                                                 )
-        new_cache_list2.append(cache_list1)
+        new_cache_list2.append(new_cache_backbone_list)
 
         # 策略
-        action, cache_list1 = self.actorhead(
+        action_logits, cache_list1 = self.actorhead(
                                                 x_backbone,
                                                 self.H,
                                                 self.W,
@@ -178,8 +178,8 @@ class TimeSpaceChessModel(nn.Module):
                                                 )
         new_cache_list2.append(cache_list1)
         # action B, S, L, D -> B, S, L, 73
-        action = self.actorhead_output(action)
-        action = rearrange(action, "b s l d -> b s (l d)")
+        action_logits = self.actorhead_output(action_logits)
+        action_logits = rearrange(action_logits, "b s l d -> b s (l d)")
         # action B, S, 4672
 
         # 价值
@@ -207,7 +207,7 @@ class TimeSpaceChessModel(nn.Module):
         # map value to [-1, 1]
         value = F.tanh(value)
 
-        return action, value, new_cache_list2
+        return action_logits, value, new_cache_list2
 
 
 def print_model_parameters_by_module(model):
@@ -262,14 +262,13 @@ def test():
 
     H, W = 8, 8
     BATCH_SIZE = 1
-    TOTAL_SEQUENCE_LENGTH = 353  # 总序列长度
+    TOTAL_SEQUENCE_LENGTH = 777  # 总序列长度
     INPUT_CHANNELS = 112
 
     print(f"--- Model Test for Long Sequence Processing ---")
     print(f"Device: {device}")
     print(f"Board size: {H}x{W}")
     print(f"Batch size: {BATCH_SIZE}, Total sequence length: {TOTAL_SEQUENCE_LENGTH}")
-    print(f"Chunking Strategy: Try 16 -> Try 8 -> Fallback to 1")
 
     # 1. 初始化模型
     try:
@@ -321,6 +320,8 @@ def test():
                 chunk_size = 16
             elif remaining_len >= 8:
                 chunk_size = 8
+            elif remaining_len >= 4:
+                chunk_size = 4
             else:
                 chunk_size = 1  # 如果连8都不到，就使用1来处理剩余部分
 

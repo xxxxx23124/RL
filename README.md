@@ -1,8 +1,8 @@
 重构造中，计划使用ppo训练自博弈下国际象棋。  
 关于自博弈这一点，搞两个cache就可以分别代表黑棋白棋了。  
   
-目前进度 -> 模型设计完成 -> ppo的基础训练流程(在legacy文件夹里)  
-未来需要完成 -> 使用torchrl的ppo训练/使用AlphaZero/MuZero来训练。  
+目前进度 -> 模型设计完成 / ppo的基础训练流程(在legacy文件夹里)  
+未来需要完成 -> 使用ppo/AlphaZero/MuZero来训练.  
   
 训练时可以使用checkpoint和ssm_states的机制，只要单片段的计算能够在硬件上承载，整个训练流程的显存占用就是稳定可控的。  
   
@@ -31,6 +31,8 @@ TimeSpaceBlock，mamba2处理时间步，flash attention处理空间（图像，
 策略头：m*TimeSpaceBlock ->负责根据来自共享主干的局势判断，和自身的策略知识做出下一步行动。输入: (B, S, L, D) 输出: (B, S, 4672)。
   
 价值头：i层feedforward层 + 1*TimeSpaceBlock + j个空间处理块 + 1*Linear层-> 不希望使用太多TimeSpaceBlock是因为减轻计算代价。输入: (B, S, L, D) 输出: (B, S, 1)。使用feedforward块把(B, S, L, D)->(B, S, L, D_low)，这一步相对于只根据来自主干的每个点独立的信息（维度D，可能包含很多其他的信息）判断每个点的价值（为D_low）。通过一层TimeSpaceBlock进行浅层提炼。然后再输入j层空间处理层，得到输出 (B, S, L, D_low)，最后再一个线性映射为(B, S, L, 1) -> (B, S, L) ，输入一个Global Average Pooling得到(B, S, 1)+tanh->[-1,1]。  
+  
+想看看模型架构在深度堆叠后，是否会产生类似战略的思维，而这不直接依赖于蒙特卡洛搜索。  
   
 todo：  
 (窗口化/局部注意力、分层/金字塔结构、稀疏/低秩近似注意力) -> 可以处理更大的图片，但这个可能不适合下棋，自然图像充满了高度的局部相关性和冗余。围棋棋盘几乎没有冗余。  
