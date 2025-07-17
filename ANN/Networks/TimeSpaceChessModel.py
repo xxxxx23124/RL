@@ -252,127 +252,128 @@ def print_model_summary(model, model_name="Model"):
 
 
 def test():
-    """
-    测试函数，修改为处理长序列（800），并使用分块、缓存和梯度累积。
-    """
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    if not torch.cuda.is_available():
-        print("CUDA is not available. Testing on CPU. Memory usage will not be representative.")
-        return
+    for _ in range(1):
+        """
+        测试函数，修改为处理长序列（800），并使用分块、缓存和梯度累积。
+        """
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        if not torch.cuda.is_available():
+            print("CUDA is not available. Testing on CPU. Memory usage will not be representative.")
+            return
 
-    H, W = 8, 8
-    BATCH_SIZE = 1
-    TOTAL_SEQUENCE_LENGTH = 777  # 总序列长度
-    INPUT_CHANNELS = 112
+        H, W = 8, 8
+        BATCH_SIZE = 1
+        TOTAL_SEQUENCE_LENGTH = 1  # 总序列长度
+        INPUT_CHANNELS = 111
 
-    print(f"--- Model Test for Long Sequence Processing ---")
-    print(f"Device: {device}")
-    print(f"Board size: {H}x{W}")
-    print(f"Batch size: {BATCH_SIZE}, Total sequence length: {TOTAL_SEQUENCE_LENGTH}")
+        print(f"--- Model Test for Long Sequence Processing ---")
+        print(f"Device: {device}")
+        print(f"Board size: {H}x{W}")
+        print(f"Batch size: {BATCH_SIZE}, Total sequence length: {TOTAL_SEQUENCE_LENGTH}")
 
-    # 1. 初始化模型
-    try:
-        model = TimeSpaceChessModel(H, W, device)
-        model.to(device)
-        print("Model initialized successfully.")
-    except Exception as e:
-        print(f"Error during model initialization: {e}")
-        return
+        # 1. 初始化模型
+        try:
+            model = TimeSpaceChessModel(H, W, device)
+            model.to(device)
+            print("Model initialized successfully.")
+        except Exception as e:
+            print(f"Error during model initialization: {e}")
+            return
 
-    # 2. 创建完整的模拟输入和目标
-    # 输入形状: (B, S_total, H, W, C)
-    full_input_tensor = torch.randn(BATCH_SIZE, TOTAL_SEQUENCE_LENGTH, H, W, INPUT_CHANNELS, device=device)
-    # 目标策略形状: (B, S_total, 4672)
-    full_target_policy = torch.randn(BATCH_SIZE, TOTAL_SEQUENCE_LENGTH, 4672, device=device)
-    # 目标价值形状: (B, S_total, 1)
-    full_target_value = torch.randn(BATCH_SIZE, TOTAL_SEQUENCE_LENGTH, 1, device=device)
+        # 2. 创建完整的模拟输入和目标
+        # 输入形状: (B, S_total, H, W, C)
+        full_input_tensor = torch.randn(BATCH_SIZE, TOTAL_SEQUENCE_LENGTH, H, W, INPUT_CHANNELS, device=device)
+        # 目标策略形状: (B, S_total, 4672)
+        full_target_policy = torch.randn(BATCH_SIZE, TOTAL_SEQUENCE_LENGTH, 4672, device=device)
+        # 目标价值形状: (B, S_total, 1)
+        full_target_value = torch.randn(BATCH_SIZE, TOTAL_SEQUENCE_LENGTH, 1, device=device)
 
-    print(f"Full input tensor shape: {full_input_tensor.shape}")
+        print(f"Full input tensor shape: {full_input_tensor.shape}")
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-    loss_fn = nn.MSELoss()
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+        loss_fn = nn.MSELoss()
 
-    # 3. 运行前向和反向传播，并监控显存
-    # 清空缓存以获得准确的初始显存读数
-    torch.cuda.empty_cache()
-    torch.cuda.reset_peak_memory_stats()  # 重置峰值统计
-    initial_memory = torch.cuda.memory_allocated() / 1024 ** 2
-    print(f"\nInitial CUDA memory allocated: {initial_memory:.2f} MB")
+        # 3. 运行前向和反向传播，并监控显存
+        # 清空缓存以获得准确的初始显存读数
+        torch.cuda.empty_cache()
+        torch.cuda.reset_peak_memory_stats()  # 重置峰值统计
+        initial_memory = torch.cuda.memory_allocated() / 1024 ** 2
+        print(f"\nInitial CUDA memory allocated: {initial_memory:.2f} MB")
 
-    try:
-        # --- 梯度累积和分块处理 ---
-        optimizer.zero_grad()  # 在循环开始前清零梯度
+        try:
+            # --- 梯度累积和分块处理 ---
+            optimizer.zero_grad()  # 在循环开始前清零梯度
 
-        cache_list2 = None  # 初始化缓存为空
-        total_loss_accumulated = 0.0
+            cache_list2 = None  # 初始化缓存为空
+            total_loss_accumulated = 0.0
 
-        print("\nStarting chunk processing...")
-        processed_len = 0
-        while processed_len < TOTAL_SEQUENCE_LENGTH:
-            remaining_len = TOTAL_SEQUENCE_LENGTH - processed_len
+            print("\nStarting chunk processing...")
+            processed_len = 0
+            while processed_len < TOTAL_SEQUENCE_LENGTH:
+                remaining_len = TOTAL_SEQUENCE_LENGTH - processed_len
 
-            # 决定当前块的大小
-            if remaining_len >= 64:
-                chunk_size = 64
-            elif remaining_len >= 32:
-                chunk_size = 32
-            elif remaining_len >= 16:
-                chunk_size = 16
-            elif remaining_len >= 8:
-                chunk_size = 8
-            elif remaining_len >= 4:
-                chunk_size = 4
-            else:
-                chunk_size = 1  # 如果连8都不到，就使用1来处理剩余部分
+                # 决定当前块的大小
+                if remaining_len >= 64:
+                    chunk_size = 64
+                elif remaining_len >= 32:
+                    chunk_size = 32
+                elif remaining_len >= 16:
+                    chunk_size = 16
+                elif remaining_len >= 8:
+                    chunk_size = 8
+                elif remaining_len >= 4:
+                    chunk_size = 4
+                else:
+                    chunk_size = 1  # 如果连8都不到，就使用1来处理剩余部分
 
-            # 获取当前块的数据
-            chunk_input = full_input_tensor[:, processed_len: processed_len + chunk_size]
-            chunk_target_policy = full_target_policy[:, processed_len: processed_len + chunk_size]
-            chunk_target_value = full_target_value[:, processed_len: processed_len + chunk_size]
+                # 获取当前块的数据
+                chunk_input = full_input_tensor[:, processed_len: processed_len + chunk_size]
+                chunk_target_policy = full_target_policy[:, processed_len: processed_len + chunk_size]
+                chunk_target_value = full_target_value[:, processed_len: processed_len + chunk_size]
 
-            print(
-                f"  - Processing chunk: index {processed_len} to {processed_len + chunk_size - 1} (size: {chunk_size})")
+                print(
+                    f"  - Processing chunk: index {processed_len} to {processed_len + chunk_size - 1} (size: {chunk_size})")
 
-            # --- 前向传播 ---
-            # 使用 checkpoint 来节省显存
-            # 将上一个块的 cache 传入
-            policy_pred, value_pred, cache_list2 = model(chunk_input, cache_list2)
+                # --- 前向传播 ---
+                # 使用 checkpoint 来节省显存
+                # 将上一个块的 cache 传入
+                policy_pred, value_pred, cache_list2 = model(chunk_input, cache_list2)
 
-            # --- 计算损失 ---
-            policy_loss = loss_fn(policy_pred, chunk_target_policy)
-            value_loss = loss_fn(value_pred, chunk_target_value)
-            # 为了防止梯度累积时因计算图释放导致损失过大，可以适当缩放
-            chunk_loss = (policy_loss + value_loss) * (chunk_size / TOTAL_SEQUENCE_LENGTH)
+                # --- 计算损失 ---
+                policy_loss = loss_fn(policy_pred, chunk_target_policy)
+                value_loss = loss_fn(value_pred, chunk_target_value)
+                # 为了防止梯度累积时因计算图释放导致损失过大，可以适当缩放
+                chunk_loss = (policy_loss + value_loss) * (chunk_size / TOTAL_SEQUENCE_LENGTH)
 
-            total_loss_accumulated += chunk_loss.item() * (TOTAL_SEQUENCE_LENGTH / chunk_size)  # 累加回未缩放的损失值
+                total_loss_accumulated += chunk_loss.item() * (TOTAL_SEQUENCE_LENGTH / chunk_size)  # 累加回未缩放的损失值
 
-            # --- 反向传播 (梯度累积) ---
-            # 每个块都进行反向传播，梯度会累加到 .grad 属性上
-            chunk_loss.backward()
+                # --- 反向传播 (梯度累积) ---
+                # 每个块都进行反向传播，梯度会累加到 .grad 属性上
+                chunk_loss.backward()
 
-            processed_len += chunk_size
+                processed_len += chunk_size
 
-        print("All chunks processed successfully.")
+            print("All chunks processed successfully.")
 
-        # --- 优化器步骤 ---
-        # 在所有块处理完毕后，进行一次参数更新
-        print("Running optimizer step...")
-        optimizer.step()
-        print("Optimizer step successful.")
+            # --- 优化器步骤 ---
+            # 在所有块处理完毕后，进行一次参数更新
+            print("Running optimizer step...")
+            optimizer.step()
+            print("Optimizer step successful.")
 
-        # --- 显存和损失总结 ---
-        final_memory = torch.cuda.memory_allocated() / 1024 ** 2
-        peak_memory = torch.cuda.max_memory_allocated() / 1024 ** 2  # 整个过程中的峰值
+            # --- 显存和损失总结 ---
+            final_memory = torch.cuda.memory_allocated() / 1024 ** 2
+            peak_memory = torch.cuda.max_memory_allocated() / 1024 ** 2  # 整个过程中的峰值
 
-        print(f"\n--- Run Summary ---")
-        print(f"Final accumulated loss: {total_loss_accumulated:.4f}")
-        print(f"Memory after optimizer step: {final_memory:.2f} MB")
-        print(f"Peak CUDA memory allocated during the entire process: {peak_memory:.2f} MB")
+            print(f"\n--- Run Summary ---")
+            print(f"Final accumulated loss: {total_loss_accumulated:.4f}")
+            print(f"Memory after optimizer step: {final_memory:.2f} MB")
+            print(f"Peak CUDA memory allocated during the entire process: {peak_memory:.2f} MB")
 
-    except Exception as e:
-        import traceback
-        print(f"\nAn error occurred during the test run: {e}")
-        traceback.print_exc()
+        except Exception as e:
+            import traceback
+            print(f"\nAn error occurred during the test run: {e}")
+            traceback.print_exc()
 
     # 打印模型参数信息
     print_model_summary(model, "TimeSpaceChessModel")
